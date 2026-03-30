@@ -78,3 +78,60 @@ async def test_yfinance_get_stock_name_fallback():
         name = await source.get_stock_name("2330")
 
     assert name == "2330"
+
+
+@pytest.mark.asyncio
+async def test_yfinance_partial_data_fewer_than_requested():
+    """BC-YF-05: API 回傳部分天數（< count）— 要求 49 筆但只拿到 20 筆，驗證回傳 20 筆不報錯。"""
+    source = YFinanceSource()
+    mock_ticker = MagicMock()
+    mock_ticker.history.return_value = _mock_dataframe(20)
+
+    with patch("app.datasources.yfinance_source.yf.Ticker", return_value=mock_ticker):
+        result = await source.get_daily_data("2330", 49)
+
+    assert len(result) == 20
+    assert result[0].open == 100.0
+
+
+@pytest.mark.asyncio
+async def test_yfinance_dataframe_with_nan():
+    """BC-YF-08: DataFrame 含 NaN — mock 含 NaN 的 DataFrame，驗證 float(NaN) 不報錯但產生 nan。"""
+    import math
+
+    source = YFinanceSource()
+    mock_ticker = MagicMock()
+    df = _mock_dataframe(3)
+    df.iloc[1, df.columns.get_loc("Close")] = float("nan")
+    mock_ticker.history.return_value = df
+
+    with patch("app.datasources.yfinance_source.yf.Ticker", return_value=mock_ticker):
+        result = await source.get_daily_data("2330", 3)
+
+    assert len(result) == 3
+    assert math.isnan(result[1].close)
+
+
+@pytest.mark.asyncio
+async def test_yfinance_get_stock_name_info_raises():
+    """BC-YF-09: get_stock_name 中 ticker.info 拋異常 — 驗證異常向上傳播。"""
+    source = YFinanceSource()
+    mock_ticker = MagicMock()
+    type(mock_ticker).info = property(lambda self: (_ for _ in ()).throw(Exception("API error")))
+
+    with patch("app.datasources.yfinance_source.yf.Ticker", return_value=mock_ticker):
+        with pytest.raises(Exception, match="API error"):
+            await source.get_stock_name("2330")
+
+
+@pytest.mark.asyncio
+async def test_yfinance_etf_symbol_suffix():
+    """BC-YF-02: ETF 代號 00878 — 驗證組合為 "00878.TW"。"""
+    source = YFinanceSource()
+    mock_ticker = MagicMock()
+    mock_ticker.history.return_value = _mock_dataframe(5)
+
+    with patch("app.datasources.yfinance_source.yf.Ticker", return_value=mock_ticker) as mock_cls:
+        await source.get_daily_data("00878", 5)
+
+    mock_cls.assert_called_once_with("00878.TW")

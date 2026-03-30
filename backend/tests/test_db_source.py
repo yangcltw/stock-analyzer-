@@ -75,3 +75,50 @@ async def test_fresh_path_uses_freshness_filter(monkeypatch):
     assert len(result) == 5
     fresh_mock.assert_called_once()
     stale_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_upstream_fails_stale_data_fewer_than_count(monkeypatch):
+    """BC-DB-06: Upstream 失敗，stale 資料不足 count — 驗證回傳部分資料。"""
+    upstream = AsyncMock()
+    upstream.get_daily_data.side_effect = Exception("upstream down")
+    source = DatabaseDataSource(upstream)
+
+    stale = _make_data(2)
+    monkeypatch.setattr(source, "_read_fresh_from_db", AsyncMock(return_value=[]))
+    monkeypatch.setattr(source, "_read_stale_from_db", AsyncMock(return_value=stale))
+    monkeypatch.setattr(source, "_write_to_db", AsyncMock())
+    monkeypatch.setattr("app.datasources.db_source.get_pool", AsyncMock())
+
+    result = await source.get_daily_data("2330", 5)
+    assert len(result) == 2
+
+
+@pytest.mark.asyncio
+async def test_upstream_fails_stale_empty_reraises(monkeypatch):
+    """BC-DB-05: Upstream 失敗且 stale 為空 — 驗證重新拋出 upstream 異常。"""
+    upstream = AsyncMock()
+    upstream.get_daily_data.side_effect = Exception("upstream exploded")
+    source = DatabaseDataSource(upstream)
+
+    monkeypatch.setattr(source, "_read_fresh_from_db", AsyncMock(return_value=[]))
+    monkeypatch.setattr(source, "_read_stale_from_db", AsyncMock(return_value=[]))
+    monkeypatch.setattr(source, "_write_to_db", AsyncMock())
+    monkeypatch.setattr("app.datasources.db_source.get_pool", AsyncMock())
+
+    with pytest.raises(Exception, match="upstream exploded"):
+        await source.get_daily_data("2330", 5)
+
+
+@pytest.mark.asyncio
+async def test_fresh_db_exactly_equals_count_no_upstream(monkeypatch):
+    """BC-DB-02: DB 資料剛好 = count — 驗證不呼叫 upstream。"""
+    upstream = AsyncMock()
+    source = DatabaseDataSource(upstream)
+
+    monkeypatch.setattr(source, "_read_fresh_from_db", AsyncMock(return_value=_make_data(5)))
+    monkeypatch.setattr("app.datasources.db_source.get_pool", AsyncMock())
+
+    result = await source.get_daily_data("2330", 5)
+    assert len(result) == 5
+    upstream.get_daily_data.assert_not_called()

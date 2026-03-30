@@ -36,6 +36,7 @@ class TWSESource(StockDataSource):
         return all_data[-count:]
 
     async def _fetch_month(self, symbol: str, year: int, month: int) -> dict | None:
+        # TODO(high): wrap client.get in try/except to catch httpx.TimeoutException
         date_str = f"{year}{month:02d}01"
         async with httpx.AsyncClient() as client:
             resp = await client.get(
