@@ -105,13 +105,18 @@ export default function Home() {
                       <th className="px-3 py-2 text-right">最高</th>
                       <th className="px-3 py-2 text-right">最低</th>
                       <th className="px-3 py-2 text-right">收盤</th>
+                      <th className="px-3 py-2 text-right text-blue-600">MA5</th>
+                      <th className="px-3 py-2 text-right text-orange-500">MA20</th>
                       <th className="px-3 py-2 text-right hidden sm:table-cell">成交量</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {data.data.slice().reverse().map((d, i) => {
+                      const revIndex = data.data.length - 1 - i;
                       const prev = data.data.slice().reverse()[i + 1];
                       const isUp = prev ? d.close >= prev.close : true;
+                      const ma5Val = data.ma5[revIndex];
+                      const ma20Val = data.ma20[revIndex];
                       return (
                         <tr key={d.date} className="hover:bg-gray-50">
                           <td className="px-3 py-1.5 text-gray-600 whitespace-nowrap">{d.date}</td>
@@ -121,6 +126,8 @@ export default function Home() {
                           <td className={`px-3 py-1.5 text-right font-medium ${isUp ? "text-red-600" : "text-green-600"}`}>
                             {d.close}
                           </td>
+                          <td className="px-3 py-1.5 text-right text-blue-600">{ma5Val ?? "-"}</td>
+                          <td className="px-3 py-1.5 text-right text-orange-500">{ma20Val ?? "-"}</td>
                           <td className="px-3 py-1.5 text-right text-gray-500 hidden sm:table-cell">
                             {d.volume.toLocaleString()}
                           </td>
