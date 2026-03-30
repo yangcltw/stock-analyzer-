@@ -50,7 +50,7 @@ class GeminiAnalyzer(AIAnalyzer):
             from google.genai import types
             user_prompt = _build_user_prompt(symbol, data, ma5, ma20)
             response = self._client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-2.5-flash",
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
                     temperature=0.3,
