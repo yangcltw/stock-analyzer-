@@ -24,3 +24,6 @@ pgdata/
 
 # gstack (not part of this project)
 gstack/
+
+# Claude Code local config
+.claude/

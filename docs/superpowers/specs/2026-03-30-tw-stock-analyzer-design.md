@@ -379,26 +379,6 @@ Real TWSE STOCK_DAY column order:
 
 Note: 成交股數 ([1]) is in shares (not lots). Date is in ROC format (e.g., "115/03/02" = 2026-03-02).
 
-## Future Data Sources (Not In Scope)
-
-| Source | Status | Blocker |
-|--------|--------|---------|
-| DTNO (CMoney internal API) | Future | Need JWT token acquisition mechanism. [DTNO 資料源申請文件](https://docs.google.com/document/d/13yS1jZ6Bu6b134MyAX3ClKOsw01xXKhFDJNpid8rZUU/edit?tab=t.0#heading=h.tkmvzuafrrdq) |
-| FinMind | Available | Lower priority than TWSE for fallback |
-
-When DTNO becomes available, add `DtnoSource` implementing `StockDataSource` with JWT token management encapsulated within the implementation. No architecture changes needed.
-
-## Internal Project References
-
-| Reference | What We Borrowed |
-|-----------|-----------------|
-| `llm-stock-team-analyzer` (`dataflows/interface.py`) | DataSource abstraction pattern, yfinance error handling |
-| `llm-stock-team-analyzer` (`dataflows/indicators.py`) | MA calculation reference |
-| iOS `DtNoCacheManager` | TTL cache + fetch dedup pattern |
-| Android `CoroutineBaseRepository` | Template method: cache → API → store pattern |
-| iOS `GetTWStockDayKLineDataRepositoryImpl` | DTNO API format reference (for future) |
-| Android `DomainAdapter` | Environment-based URL switching pattern |
-
 ## Non-Goals
 
 - Real-time / intraday data
