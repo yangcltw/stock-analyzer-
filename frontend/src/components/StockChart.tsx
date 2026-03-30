@@ -15,20 +15,33 @@ export default function StockChart({ data }: StockChartProps) {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: 400,
+    const container = chartContainerRef.current;
+    const isMobile = container.clientWidth < 640;
+
+    const chart = createChart(container, {
+      width: container.clientWidth,
+      height: isMobile ? 300 : 500,
       layout: {
         background: { color: "#ffffff" },
         textColor: "#333",
+        fontSize: isMobile ? 10 : 12,
       },
       grid: {
-        vertLines: { color: "#e0e0e0" },
-        horzLines: { color: "#e0e0e0" },
+        vertLines: { color: "#f0f0f0" },
+        horzLines: { color: "#f0f0f0" },
       },
       timeScale: {
         timeVisible: false,
-        borderColor: "#ccc",
+        borderColor: "#e0e0e0",
+        fixLeftEdge: true,
+        fixRightEdge: true,
+      },
+      rightPriceScale: {
+        borderColor: "#e0e0e0",
+      },
+      crosshair: {
+        vertLine: { labelVisible: true },
+        horzLine: { labelVisible: true },
       },
     });
     chartRef.current = chart;
@@ -36,6 +49,8 @@ export default function StockChart({ data }: StockChartProps) {
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#ef5350",
       downColor: "#26a69a",
+      borderUpColor: "#ef5350",
+      borderDownColor: "#26a69a",
       wickUpColor: "#ef5350",
       wickDownColor: "#26a69a",
     });
@@ -54,6 +69,9 @@ export default function StockChart({ data }: StockChartProps) {
       color: "#2196F3",
       lineWidth: 2,
       title: "MA5",
+      crosshairMarkerVisible: false,
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
 
     ma5Series.setData(
@@ -69,6 +87,9 @@ export default function StockChart({ data }: StockChartProps) {
       color: "#FF9800",
       lineWidth: 2,
       title: "MA20",
+      crosshairMarkerVisible: false,
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
 
     ma20Series.setData(
@@ -84,7 +105,9 @@ export default function StockChart({ data }: StockChartProps) {
 
     const handleResize = () => {
       if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+        const w = chartContainerRef.current.clientWidth;
+        const h = w < 640 ? 300 : 500;
+        chart.applyOptions({ width: w, height: h });
       }
     };
     window.addEventListener("resize", handleResize);
@@ -95,5 +118,24 @@ export default function StockChart({ data }: StockChartProps) {
     };
   }, [data]);
 
-  return <div ref={chartContainerRef} className="w-full" />;
+  return (
+    <div className="relative">
+      <div ref={chartContainerRef} className="w-full" />
+      {/* Legend */}
+      <div className="flex gap-4 mt-2 text-xs sm:text-sm text-gray-500 px-1">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-0.5 bg-blue-500" /> MA5
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-0.5 bg-orange-500" /> MA20
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 bg-red-500 rounded-sm" /> 上漲
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 bg-teal-500 rounded-sm" /> 下跌
+        </span>
+      </div>
+    </div>
+  );
 }
