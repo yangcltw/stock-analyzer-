@@ -1,7 +1,26 @@
+# Dependencies
 node_modules/
+
+# Python
 __pycache__/
-.env
-.next/
-pgdata/
 *.pyc
 .pytest_cache/
+
+# Next.js
+.next/
+
+# Environment (contains API keys)
+.env
+
+# Docker volumes
+pgdata/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# gstack (not part of this project)
+gstack/
