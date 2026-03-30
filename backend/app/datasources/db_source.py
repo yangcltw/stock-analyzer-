@@ -1,3 +1,5 @@
+from datetime import date as date_type
+
 from app.datasources.interface import StockDataSource
 from app.datasources.models import StockDailyData
 from app.db.connection import get_pool
@@ -17,7 +19,10 @@ class DatabaseDataSource(StockDataSource):
 
         try:
             data = await self._upstream.get_daily_data(symbol, count)
-            await self._write_to_db(pool, symbol, data)
+            try:
+                await self._write_to_db(pool, symbol, data)
+            except Exception:
+                pass  # Write failure should not block returning data
             return data
         except Exception:
             stale_rows = await self._read_stale_from_db(pool, symbol, count)
@@ -85,5 +90,5 @@ class DatabaseDataSource(StockDataSource):
                     low = EXCLUDED.low, close = EXCLUDED.close,
                     volume = EXCLUDED.volume, fetched_at = NOW()
                 """,
-                [(symbol, d.date, d.open, d.high, d.low, d.close, d.volume) for d in data],
+                [(symbol, date_type.fromisoformat(d.date), d.open, d.high, d.low, d.close, d.volume) for d in data],
             )
