@@ -84,7 +84,7 @@ async def get_stock(symbol: str):
     display_ma5 = all_ma5[-DISPLAY_DAYS:]
     display_ma20 = all_ma20[-DISPLAY_DAYS:]
 
-    # AI analysis with independent cache
+    # AI analysis with independent cache (only cache successful results)
     ai_result = None
     now = time.time()
     if symbol in _ai_cache:
@@ -96,8 +96,9 @@ async def get_stock(symbol: str):
             ai_result = await analyzer.analyze(symbol, display_data, display_ma5, display_ma20)
         except Exception:
             ai_result = None
-        ttl = get_ttl_seconds()
-        _ai_cache[symbol] = (ai_result, now + ttl)
+        if ai_result is not None:
+            ttl = get_ttl_seconds()
+            _ai_cache[symbol] = (ai_result, now + ttl)
 
     name = await get_stock_name(symbol)
 

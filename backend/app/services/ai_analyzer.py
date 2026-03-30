@@ -54,7 +54,8 @@ class GeminiAnalyzer(AIAnalyzer):
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
                     temperature=0.3,
-                    max_output_tokens=500,
+                    max_output_tokens=1000,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0),
                 ),
                 contents=user_prompt,
             )
