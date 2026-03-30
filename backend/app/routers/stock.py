@@ -11,7 +11,7 @@ from app.datasources.fallback_source import FallbackDataSource
 from app.datasources.db_source import DatabaseDataSource
 from app.datasources.cached_source import CachedDataSource
 from app.services.indicator import IndicatorService
-from app.services.ai_analyzer import AIAnalyzer, OpenAIAnalyzer
+from app.services.ai_analyzer import AIAnalyzer, GeminiAnalyzer, OpenAIAnalyzer, FallbackAIAnalyzer
 from app.utils.cache_ttl import get_ttl_seconds
 
 router = APIRouter(prefix="/api")
@@ -42,7 +42,9 @@ def get_data_source() -> StockDataSource:
 def get_ai_analyzer() -> AIAnalyzer:
     global _ai_analyzer
     if _ai_analyzer is None:
-        _ai_analyzer = OpenAIAnalyzer()
+        gemini = GeminiAnalyzer()
+        openai = OpenAIAnalyzer()
+        _ai_analyzer = FallbackAIAnalyzer(gemini, openai)
     return _ai_analyzer
 
 
@@ -90,7 +92,10 @@ async def get_stock(symbol: str):
         if now < ai_expires_at:
             ai_result = cached_ai
     if ai_result is None:
-        ai_result = await analyzer.analyze(symbol, display_data, display_ma5, display_ma20)
+        try:
+            ai_result = await analyzer.analyze(symbol, display_data, display_ma5, display_ma20)
+        except Exception:
+            ai_result = None
         ttl = get_ttl_seconds()
         _ai_cache[symbol] = (ai_result, now + ttl)
 

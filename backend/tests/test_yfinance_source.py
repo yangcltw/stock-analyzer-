@@ -42,7 +42,9 @@ async def test_yfinance_appends_tw_suffix():
     with patch("app.datasources.yfinance_source.yf.Ticker", return_value=mock_ticker) as mock_cls:
         await source.get_daily_data("2330", 5)
 
-    mock_cls.assert_called_once_with("2330.TW")
+    # _get_yf_symbol probes .TW first, then _fetch uses the resolved symbol
+    assert mock_cls.call_args_list[0] == (("2330.TW",),)
+    assert all(call[0][0] == "2330.TW" for call in mock_cls.call_args_list)
 
 
 @pytest.mark.asyncio
@@ -134,4 +136,5 @@ async def test_yfinance_etf_symbol_suffix():
     with patch("app.datasources.yfinance_source.yf.Ticker", return_value=mock_ticker) as mock_cls:
         await source.get_daily_data("00878", 5)
 
-    mock_cls.assert_called_once_with("00878.TW")
+    # _get_yf_symbol probes .TW first; all calls should use "00878.TW"
+    assert mock_cls.call_args_list[0] == (("00878.TW",),)

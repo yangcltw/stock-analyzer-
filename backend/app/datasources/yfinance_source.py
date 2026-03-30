@@ -11,10 +11,14 @@ class YFinanceSource(StockDataSource):
     def __init__(self):
         self._name_cache: dict[str, str] = {}
 
+    _FETCH_TIMEOUT = 30  # seconds
+
     async def get_daily_data(self, symbol: str, count: int) -> list[StockDailyData]:
         loop = asyncio.get_running_loop()
-        # TODO(high): wrap with asyncio.wait_for to prevent hanging on network issues
-        df = await loop.run_in_executor(None, partial(self._fetch, symbol, count))
+        df = await asyncio.wait_for(
+            loop.run_in_executor(None, partial(self._fetch, symbol, count)),
+            timeout=self._FETCH_TIMEOUT,
+        )
 
         if df.empty:
             raise ValueError(f"No data returned for symbol {symbol}")
@@ -40,11 +44,19 @@ class YFinanceSource(StockDataSource):
         self._name_cache[symbol] = name
         return name
 
+    def _get_yf_symbol(self, symbol: str) -> str:
+        ticker_tw = yf.Ticker(f"{symbol}.TW")
+        df = ticker_tw.history(period="5d")
+        if not df.empty:
+            return f"{symbol}.TW"
+        return f"{symbol}.TWO"
+
     def _fetch(self, symbol: str, count: int):
-        # TODO(high): .TW hardcoded — OTC stocks need .TWO suffix, decide scope
-        ticker = yf.Ticker(f"{symbol}.TW")
+        yf_symbol = self._get_yf_symbol(symbol)
+        ticker = yf.Ticker(yf_symbol)
         return ticker.history(period=f"{count * 2}d").tail(count)
 
     def _fetch_name(self, symbol: str) -> str:
-        ticker = yf.Ticker(f"{symbol}.TW")
+        yf_symbol = self._get_yf_symbol(symbol)
+        ticker = yf.Ticker(yf_symbol)
         return ticker.info.get("longName", symbol)

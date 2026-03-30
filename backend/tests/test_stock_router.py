@@ -133,17 +133,19 @@ def test_b8_10_path_traversal_rejected(client):
 
 
 def test_b9_1_graceful_degradation_ai_exception(client):
-    """AI 分析拋出例外時，目前 router 未捕捉，會導致 500。
-    NOTE: 此為已知缺陷，應在 router 層加 try/except 使其回傳 200 + ai_analysis=None。
-    """
+    """AI 分析拋出例外時，router 應 graceful degradation：回傳 200 + ai_analysis=None。"""
     with patch("app.routers.stock.get_data_source") as mock_ds, \
          patch("app.routers.stock.get_ai_analyzer") as mock_ai, \
          patch("app.routers.stock.get_stock_name", new_callable=AsyncMock, return_value="台積電"):
         mock_ds.return_value = AsyncMock(get_daily_data=AsyncMock(return_value=_make_data(49)))
         mock_ai.return_value = AsyncMock(analyze=AsyncMock(side_effect=Exception("OpenAI down")))
 
-        with pytest.raises(Exception, match="OpenAI down"):
-            client.get("/api/stock/2330")
+        resp = client.get("/api/stock/2330")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ai_analysis"] is None
+    assert len(body["data"]) == 30
 
 
 def test_data_source_error_returns_502(client):
