@@ -13,5 +13,4 @@ export interface StockResponse {
   data: StockDailyData[];
   ma5: (number | null)[];
   ma20: (number | null)[];
-  ai_analysis: string | null;
 }

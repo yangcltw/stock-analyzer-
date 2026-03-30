@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import StockInput from "@/components/StockInput";
 import StockChart from "@/components/StockChart";
 import AIAnalysis from "@/components/AIAnalysis";
-import { fetchStock } from "@/services/stockApi";
+import { fetchStock, streamAIAnalysis } from "@/services/stockApi";
 import { StockResponse } from "@/types/stock";
 
 export default function Home() {
@@ -12,17 +12,50 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // AI streaming state
+  const [aiText, setAiText] = useState("");
+  const [aiStreaming, setAiStreaming] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const sseRef = useRef<AbortController | null>(null);
+
+  const cleanupSSE = useCallback(() => {
+    if (sseRef.current) {
+      sseRef.current.abort();
+      sseRef.current = null;
+    }
+  }, []);
+
   const handleSearch = async (symbol: string) => {
+    // Cleanup previous SSE connection
+    cleanupSSE();
+
     setLoading(true);
     setError(null);
     setData(null);
+    setAiText("");
+    setAiStreaming(false);
+    setAiError(null);
 
     try {
+      // Step 1: Fetch data (fast — chart renders immediately)
       const result = await fetchStock(symbol);
       setData(result);
+      setLoading(false);
+
+      // Step 2: Start AI streaming (non-blocking)
+      setAiStreaming(true);
+      const controller = streamAIAnalysis(
+        symbol,
+        (token) => setAiText((prev) => prev + token),
+        (_fullText) => setAiStreaming(false),
+        (message) => {
+          setAiError(message);
+          setAiStreaming(false);
+        },
+      );
+      sseRef.current = controller;
     } catch (e) {
       setError(e instanceof Error ? e.message : "查詢失敗");
-    } finally {
       setLoading(false);
     }
   };
@@ -88,8 +121,8 @@ export default function Home() {
               <StockChart data={data} />
             </div>
 
-            {/* AI Analysis */}
-            <AIAnalysis analysis={data.ai_analysis} loading={loading} />
+            {/* AI Analysis — streaming */}
+            <AIAnalysis text={aiText} streaming={aiStreaming} error={aiError} />
 
             {/* Data Table — collapsible on mobile */}
             <details className="bg-white rounded-lg border border-gray-200">

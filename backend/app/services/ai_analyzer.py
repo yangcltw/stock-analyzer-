@@ -38,6 +38,11 @@ class AIAnalyzer(ABC):
         ...
 
 
+class GeminiStreamAnalyzer:
+    """Separate class for streaming — used directly by SSE endpoint."""
+    pass
+
+
 class GeminiAnalyzer(AIAnalyzer):
     def __init__(self):
         from google import genai
