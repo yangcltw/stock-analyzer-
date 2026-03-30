@@ -56,5 +56,7 @@ class OpenAIAnalyzer(AIAnalyzer):
                 max_tokens=500,
             )
             return response.choices[0].message.content
-        except Exception:
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"AI analysis failed: {e}")
             return None
