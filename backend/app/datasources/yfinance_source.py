@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from functools import partial
 
 import yfinance as yf
@@ -6,12 +7,20 @@ import yfinance as yf
 from app.datasources.interface import StockDataSource
 from app.datasources.models import StockDailyData
 
+logger = logging.getLogger(__name__)
+
 
 class YFinanceSource(StockDataSource):
+    """yfinance data source for Taiwan stocks.
+
+    yfinance >= 1.2.0 uses curl_cffi to impersonate Chrome,
+    handling cookies/crumb automatically. No custom session needed.
+    """
+
+    _FETCH_TIMEOUT = 30
+
     def __init__(self):
         self._name_cache: dict[str, str] = {}
-
-    _FETCH_TIMEOUT = 30  # seconds
 
     async def get_daily_data(self, symbol: str, count: int) -> list[StockDailyData]:
         loop = asyncio.get_running_loop()
@@ -44,19 +53,23 @@ class YFinanceSource(StockDataSource):
         self._name_cache[symbol] = name
         return name
 
-    def _get_yf_symbol(self, symbol: str) -> str:
-        ticker_tw = yf.Ticker(f"{symbol}.TW")
-        df = ticker_tw.history(period="5d")
-        if not df.empty:
-            return f"{symbol}.TW"
-        return f"{symbol}.TWO"
-
     def _fetch(self, symbol: str, count: int):
-        yf_symbol = self._get_yf_symbol(symbol)
-        ticker = yf.Ticker(yf_symbol)
-        return ticker.history(period=f"{count * 2}d").tail(count)
+        ticker = yf.Ticker(f"{symbol}.TW")
+        df = ticker.history(period=f"{count * 2}d")
+
+        if df.empty:
+            logger.info(f"{symbol}.TW returned empty, trying .TWO")
+            ticker = yf.Ticker(f"{symbol}.TWO")
+            df = ticker.history(period=f"{count * 2}d")
+
+        return df.tail(count)
 
     def _fetch_name(self, symbol: str) -> str:
-        yf_symbol = self._get_yf_symbol(symbol)
-        ticker = yf.Ticker(yf_symbol)
-        return ticker.info.get("longName", symbol)
+        try:
+            ticker = yf.Ticker(f"{symbol}.TW")
+            name = ticker.info.get("longName") or ticker.info.get("shortName")
+            if name:
+                return name
+        except Exception:
+            pass
+        return symbol
